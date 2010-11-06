@@ -145,20 +145,23 @@ class Template(_jinja2_environment.Template):
             import sys
             import traceback
             exc_traceback = sys.exc_info()[-1]
-            trace = traceback.extract_tb(exc_traceback)[-1]
-            e.lineno = trace[1]
+            full_trace = traceback.extract_tb(exc_traceback)
             source = None
 
             # If we're getting <template> than we're being call from a memory
             # template, this occurs when we use the {% jinja %} template tag
             # In that case we use the Django source and find our position
             # within that
-            if trace[0] == '<template>' and hasattr(self, 'source'):
+            if full_trace[-1][0] == '<template>' and hasattr(self, 'source'):
                 source = self.source
                 e.name = source[0].name
                 e.source = source
             else:
-                e.name = trace[0]
+                for trace in full_trace[::-1]:
+                    if trace[0].endswith('.html'):
+                        e.lineno = trace[1]
+                        e.name = trace[0]
+                        break
 
             # We have to cleanup the trace manually, Python does _not_ clean
             # it up for us!
@@ -206,5 +209,4 @@ def add_to_builtins(module_name):
 
 add_to_builtins('coffin.template.defaulttags')
 add_to_builtins('coffin.template.defaultfilters')
-add_to_builtins('coffin.template.interop')
 
